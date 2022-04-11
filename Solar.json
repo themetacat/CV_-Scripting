@@ -1,0 +1,1084 @@
+{
+  "slug": "5f439817-8122-4dbf-8330-913e84600d74",
+  "name": "Solar",
+  "settings": {},
+  "created_at": null,
+  "parcel_id": null,
+  "updated_at": "2022-02-01T12:01:29.894Z",
+  "height": 24,
+  "content": {
+    "voxels": "eJzt2MEJwDAAxLBm847eDfozR0DyFj7vuboHAAAAgF/rf+P/AAAAALTW/8b/AQAAAGit/43/AwAAANBa/xv/BwAAAKC1/jf+DwAAAEBr/W/8HwAAAIDW+t/4PwAAAACt9b/xfwAAAABa63/j/wAAAAC01v/G/wEAAABorf+N/wMAAADQWv8b/wcAAACgtf43/g8AAABAa/1v/B8AAACA1vrf+D8AAAAArfW/8X8AAAAAWut/4/8AAAAAtNb/xv8BAAAAaK3/jf8DAAAA0Fr/G/8HAAAAoLX+N/4PAAAAQGv9b/wfAAAAgNb63/g/AAAAAK31v/F/AAAAAFrrf+P/AAAAALTW/8b/AQAAAGit/43/AwAAANBa/xv/BwAAAKC1/jf+DwAAAEBr/W/8HwAAAIDW+t/4PwAAAACt9b/xfwAAAABa63/j/wAAAAC01v/G/wEAAABorf+N/wMAAADQWv8b/wcAAACgtf43/g8AAABAa/1v/B8AAACA1vrf+D8AAAAArfW/8X8AAAAAWut/4/8AAAAAtNb/xv8BAAAAaK3/jf8DAAAA0Fr/G/8HAAAAoLX+N/4PAAAAQGv9b/wfAAAAgNb63/g/AAAAAK0P7PgSiA==",
+    "features": [
+      {
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "uuid": "f9616977-af1b-4cc9-984f-c4f9dde15c89",
+        "flipX": true,
+        "script": "// CONSTS\nconst sun = parcel.getFeatureById('sun');\nconst fallSound = parcel.getFeatureById('fall-sound');\nconst laughterSound = parcel.getFeatureById('laughter-sound');\nconst yowSound = parcel.getFeatureById('yow-sound');\nconst bombSound = parcel.getFeatureById('bomb-sound');\nconst boomBomb = parcel.getFeatureById('boom-bomb');\nconst boomShotgun = parcel.getFeatureById('boom-shotgun');\nconst ufoBomb = parcel.getFeatureById('ufo-bomb');\nconst states = [\n  {\n    x: -2,\n    z: 3\n  },\n  {\n    x: -1,\n    z: 3\n  },\n  {\n    x: 0,\n    z: 3\n  },\n  {\n    x: 1,\n    z: 3\n  },\n  {\n    x: 2,\n    z: 3\n  },\n]\nconst ufoY = 2;\nconst boomShotgunY = 2.65;\nconst rotateAnimation = feature.createAnimation('rotation');\nrotateAnimation.setKeys([{\n  frame: 60,\n  value: feature.rotation.add(new Vector3(0, feature.rotation.y + Math.PI * 2, 0))\n}]);\n\n// VARS\nlet currentIndex = 1;\nlet rotateInterval = null;\nlet laughInterval = null;\nlet lives = 5;\nlet dead = false;\n\n// initial position\nfeature.set({position: [states[currentIndex].x, -1, states[currentIndex].z]});\nufoBomb.position.y = -5;\nboomBomb.position.y = -5;\n\nfeature.shoot = function(position) {\n  if (dead || (position !== currentIndex - 2)) return;\n  let index = -1;\n  while (index < 0 || index === currentIndex) {\n    index = getRandomInt(0, 5);    \n  }\n  laughterSound.stop();\n  lives--;\n  boomShotgun.set({position: [feature.position.x, boomShotgunY, feature.position.z-0.7]});\n  if (lives <= 0) {\n    dead = true;\n    feature.exit();\n  } else {\n    yowSound.play();      \n    moveTo(index);\n    setTimeout(() => {\n      hideBoomShotgun();\n    }, 500);\n  }\n}\n\nfunction rotate() {\n  if (rotateInterval ) {\n    clearInterval(rotateInterval );\n    rotateInterval = null;  \n    return;\n  }\n  rotating = true;\n  \n  rotateAnimate();\n  bomb();\n  rotateInterval = setInterval(() => {\n      rotateAnimate();\n      bomb();\n  }, 2000);\n  laughterSound.play();\n}\n\nfunction rotateAnimate() {\n    feature.startAnimations([rotateAnimation]);\n}\n\nfunction moveTo(index) {\n  if (currentIndex === index) return;\n  const currentState = states[currentIndex];\n  const newState = states[index];\n  if (!newState) return;  \n  currentIndex = index;\n  const deltaX = newState.x - currentState.x;\n  const deltaZ = newState.z - currentState.z;\n  const moveAnimation = feature.createAnimation('position');\n  moveAnimation.setKeys([{\n    frame: 30,\n    value: feature.position.add(new Vector3(deltaX, 0, deltaZ))\n  }]);\n  // suspend solo rotation\n  rotate();\n  feature.startAnimations([moveAnimation, rotateAnimation ]);\n  setTimeout(() => {\n    // bring back solo rotation  \n    rotate();  \n  }, 1000);\n  // fix position change\n  feature.set({position: [newState.x, feature.position.y, newState.z]});\n}\n\nfunction bomb() {\n  bombSound.stop();\n  const pos = feature.position;\n  ufoBomb.set({position: [pos.x, pos.y, pos.z]});\n  const deltaX = sun.position.x - pos.x;\n  const deltaY = sun.position.y - pos.y;\n  const deltaZ = sun.position.z - pos.z;\n  const moveAnimation = feature.createAnimation('position');\n  moveAnimation.setKeys([{\n    frame: 30,\n    value: feature.position.add(new Vector3(deltaX, deltaY + 1, deltaZ))\n  }]);\n  ufoBomb.startAnimations([moveAnimation]);\n  setTimeout(() => {\n    bombSound.play();\n    ufoBomb.position.y = -5;\n    const bombX = (currentIndex - 2) * 0.1;\n    boomBomb.set({position: [bombX, 5, boomBomb.position.z]});\n    setTimeout(() => {\n      boomBomb.position.y = -5;\n    }, 500)\n  }, 1000)\n}\n\nfunction getRandomInt(min, max) {\n  min = Math.ceil(min);\n  max = Math.floor(max);\n  return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive\n}\n\nfunction hideBoomShotgun() {\n  boomShotgun.position.y = -5;\n}\n\nfeature.enter = function() {\n  const newState = states[currentIndex];\n  const deltaY = ufoY - feature.position.y;\n  const moveAnimation = feature.createAnimation('position');\n  moveAnimation.setKeys([{\n    frame: 30,\n    value: feature.position.add(new Vector3(0, deltaY, 0))\n  }]);\n  feature.startAnimations([moveAnimation, rotateAnimation]);\n  setTimeout(() => {\n    // fix position change\n    feature.set({position: [newState.x, ufoY, newState.z]});\n    // bring back solo rotation  \n    rotate();\n  }, 1000);\n}\n\nfeature.exit = function() {\n  const state = states[currentIndex];\n  const deltaY = -1 - ufoY;\n  const moveAnimation = feature.createAnimation('position');\n  moveAnimation.setKeys([{\n    frame: 120,\n    value: feature.position.add(new Vector3(0, deltaY, 0))\n  }]);\n  const rotateAnimationLong = feature.createAnimation('rotation');\n  rotateAnimationLong.setKeys([{\n    frame: 120,\n    value: feature.rotation.add(new Vector3(0, feature.rotation.y + Math.PI * 4, 0))\n  }]);\n  // suspend solo rotation\n  rotate();\n  feature.startAnimations([moveAnimation, rotateAnimationLong]);\n  boomShotgun.startAnimations([moveAnimation]);\n  fallSound.play();\n  setTimeout(() => {\n    // fix position change\n    feature.set({position: [state.x, -1, state.z]});\n    sun.nextSection();\n  }, 4000);\n}\n\nhideBoomShotgun();\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631198782437-f79362c3-247e-47f9-aef6-650b6e799ebe.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "8.3.11",
+        "position": [
+          -1,
+          -1,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "megavox",
+        "id": "ufo"
+      },
+      {
+        "scale": [
+          1.5,
+          1.5,
+          1.5
+        ],
+        "uuid": "12824633-67d7-4da7-9bad-470b238887a3",
+        "flipX": true,
+        "script": "// constants\nconst ORIGIN_X = 0;\nconst ORIGIN_Y = 5;\nconst ORIGIN_Z = 4;\nconst planetNames = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'saturn-ring', 'uranus', 'neptune'];\nconst planets = planetNames.map(name => parcel.getFeatureById(name));\nconst ufo = parcel.getFeatureById('ufo');\nconst shotgun = parcel.getFeatureById('shotgun');\nconst buttonNext = parcel.getFeatureById('button-next');\nconst buttonStart = parcel.getFeatureById('button-start');\nconst buttonShotgun = parcel.getFeatureById('button-shotgun');\nconst attributions = parcel.getFeatureById('attributions');\n\nfeature.definition = {\n  period: 0,\n  r: 0, \n  rotation: 200\n}\nfeature.state = {\n  moving: false\n}\n\n// initial movement values\nlet sectionIndex = 0;\nlet orbitation = Math.PI/2;\n\nfeature.initPlanet = function(planet) {\n  //resize\n  const scale = Math.pow(planet.definition.size, 1/2.5)/2;\n  planet.scale.x = scale;\n  planet.scale.y = scale;\n  planet.scale.z = scale;\n  // reposition\n  planet.position.x = planet.definition.r;\n  planet.position.y = ORIGIN_Y + planet.definition.y;\n  planet.position.z = ORIGIN_Z;\n}\n\nfeature.toggleSystem = function() {\n  clearPolytext();\n  rotate(feature);\n  planets.forEach(planet => {\n    if (!planet.definition) return;\n    move(planet);\n  });\n  buttonStart.hide();\n  setTimeout(() => feature.nextSection(), 3000);\n};\n\nfunction move(planet) {\n  if (planet.state.moving) {\n    clearInterval(planet.state.orbitInterval);\n    rotateStop(planet);\n    planet.state.moving = false;  \n  } else {\n    orbit(planet);\n    rotate(planet);\n    planet.state.moving = true;\n  }\n}\n\nfunction orbit(planet) {\n  planet.state.orbitInterval = setInterval(() => {\n    orbitation += 1.5; // arbitrary orbitation speed\n    let angle = orbitation;\n    if (planet.definition.period) {\n      const period = 30 * Math.sqrt(planet.definition.period); // smaller difference in orbit for politeness\n      angle = orbitation / period;\n    }\n    angle += Math.PI/2; // starting position  \n    let newX = Math.sin(angle) * planet.definition.r;\n    let newZ = Math.cos(angle) * planet.definition.r;\n    planet.position.x = ORIGIN_X + newX;\n    planet.position.z = ORIGIN_Z + newZ;\n  }, 30);\n}\n\nfunction rotate(planet) {\n  let speed = planet.definition.rotation * 10 || 300;\n  speed = speed * 6; // modify speed for politeness\n  rotateAnimation(planet, speed);\n  planet.state.rotateInterval = setInterval(() => {\n      rotateAnimation(planet, speed);\n  }, speed);\n}\n\nfunction rotateAnimation(planet, speed) {\n    let animation = planet.createAnimation('rotation');\n    let frames = 30 / (1000 / speed);\n    animation.setKeys([{\n      frame: frames,\n      value: planet.rotation.add(new Vector3(0, planet.rotation.y + Math.PI * 2, 0) )\n    }]);\n    planet.startAnimations([animation]);\n}\n\nfunction rotateStop(planet) {\n  clearInterval(planet.state.rotateInterval);\n}\n\n// SCENE MANAGEMENT\n\nfunction setPolyText(id, text) {\n  const feat = parcel.getFeatureById(id)\n  if (text) {\n    let length = text.length;\n    let count = 0;\n    const intervalId = setInterval(() => {\n      const newText  = text.substring(0, count);\n      feat.set({text:newText});\n      count++;  \n      if (count > length) clearInterval(intervalId);\n    }, 80);\n  } else {\n    feat.set({text:''});\n  }\n}\n\nfunction clearPolytext() {\n  setPolyText('polytext-1', '');\n  setPolyText('polytext-2', '');\n  setPolyText('polytext-3', '');\n}\n\nfunction section1() {\n  setTimeout(() => {\n    setPolyText('polytext-1', 'ONCE UPON A TIME');\n    setTimeout(() => {\n      setPolyText('polytext-2', 'IN A GALAXY');\n      setTimeout(() => {\n        setPolyText('polytext-3', 'NOT SO FAR AWAY...');\n        setTimeout(() => {\n          buttonNext.show();\n        }, 2000);\n      }, 1500);\n    }, 1500);\n  }, 1500);\n};\n\nfunction section2() {\n  clearPolytext();\n  setPolyText('polytext-1', 'THERE WAS A BUTTON');\n  setTimeout(() => {\n    setPolyText('polytext-2', 'THAT WOULD SWITCH ON');\n    setTimeout(() => {\n      setPolyText('polytext-3', 'THE WHOLE SOLAR SYSTEM');\n      setTimeout(() => {\n        const btn = parcel.getFeatureById('button-start');\n        btn.position.y = 1;\n      }, 1500);\n    }, 1500);\n  }, 1500);\n}\n\nfunction section3() {\n  clearPolytext();\n  setTimeout(() => {\n    setPolyText('polytext-1', 'THE PROBLEM WAS');\n    setTimeout(() => {\n      setPolyText('polytext-2', 'THAT THE BUTTON ALSO');\n      setTimeout(() => {\n        setPolyText('polytext-3', 'SENT A NOTIFICATION');\n        setTimeout(() => {\n          buttonNext.show();\n        }, 2000);\n      }, 1500);\n    }, 1500);\n  }, 1500);\n};\n\nfunction section4() {\n  clearPolytext();\n  setPolyText('polytext-1', 'TO THE EVIL ALIENS');\n  setTimeout(() => {\n    setPolyText('polytext-2', 'FROM A NEARBY SYSTEM');\n    setTimeout(() => {\n      setPolyText('polytext-3', 'LOOKING FOR FREE ENERGY');\n      setTimeout(() => {\n        buttonNext.show();\n      }, 2000);\n    }, 2000);\n  }, 1500);    \n}\n\nfunction section5() {\n  buttonNext.hide();\n  clearPolytext();\n  setTimeout(() => {\n    ufo.enter();\n    setTimeout(() => {\n      feature.nextSection();\n    }, 5000);\n}, 2000);\n}\n\nfunction section6() {\n  clearPolytext();\n  setPolyText('polytext-1', 'BUT LUCKILY THERE WAS');\n  setTimeout(() => {\n    setPolyText('polytext-2', 'ANOTHER BUTTON.');\n    setTimeout(() => {\n      setPolyText('polytext-3', 'A BUTTON FOR SUMMONING...');\n      setTimeout(() => {\n        buttonNext.show();\n      }, 2000);\n    }, 2000);\n  }, 2000);\n}\n\nfunction section7() {\n  clearPolytext();\n  setPolyText('polytext-2', '-- MEGA VOXEL BLASTER --');\n  setTimeout(() => {\n    buttonShotgun.show();\n  }, 2000);\n}\n\nfunction section8() {\n  buttonShotgun.hide();\n  clearPolytext();\n  shotgun.show();  \n}\n\nfunction section9() {\n  shotgun.hide();\n  clearPolytext();\n  // hide stuff\n  setPolyText('polytext-1', 'AND SO THE SUN WAS SAVED');\n  setTimeout(() => {\n    setPolyText('polytext-2', 'AND THE UNIVERSE');\n    setTimeout(() => {\n      setPolyText('polytext-3', 'WAS FREE AGAIN');\n      setTimeout(() => {\n        buttonNext.show();\n      }, 2000);\n    }, 1500);\n  }, 2000);\n}\n\nfunction section10() {\n  buttonNext.hide();\n  clearPolytext();\n  setPolyText('polytext-1', '--');\n  setPolyText('polytext-2', 'THE END');\n  setPolyText('polytext-3', '--');\n  attributions.show();\n}\n\nfeature.nextSection = function() {\n  buttonNext.hide();\n  sectionIndex++;\n  switch (sectionIndex) {\n    case 1:\n      section1();\n      break;\n    case 2:\n      section2();\n      break;\n    case 3:\n      section3();\n      break;\n    case 4:\n      section4();\n      break;\n    case 5:\n      section5();\n      break;\n    case 6:\n      section6();\n      break;\n    case 7:\n      section7();\n      break;\n    case 8:\n      section8();\n      break;\n    case 9:\n      section9();\n      break;\n    case 10:\n      section10();\n      break;\n    }\n}\n\nlet started = false;\nparcel.on('playerenter', ()=> {\n  if (!started) {    \n    buttonNext.hide();\n    buttonStart.hide();\n    buttonShotgun.hide();\n    shotgun.hide();\n    attributions.hide();\n    clearPolytext();\n    feature.nextSection();\n    started = true;\n  }\n});",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631049447828-8acfc4bf-7ae2-4e8c-b8c6-ecad31303b7f.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "8.9.6",
+        "position": [
+          0,
+          5,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "megavox",
+        "id": "sun"
+      },
+      {
+        "scale": [
+          0.5,
+          0.5,
+          0
+        ],
+        "uuid": "3a22c413-59ea-4661-9631-0d5155390497",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631537929940-0f2ca199-fdc0-4dbd-9ad3-fd592c189664.mp3",
+        "volume": 0.21,
+        "version": "8.3.11",
+        "rolloffFactor": 1.2,
+        "position": [
+          0,
+          -1,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "audio",
+        "id": "bomb-sound",
+        "sprite": true
+      },
+      {
+        "scale": [
+          0.5,
+          0.5,
+          0
+        ],
+        "uuid": "a77dc4b8-6993-42d5-904a-ea746dfda5cb",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631203620573-4db73aef-d227-411b-84c0-3e8f1b86a70a.mp3",
+        "volume": 0.32,
+        "version": "8.3.4",
+        "rolloffFactor": 1.2,
+        "position": [
+          0,
+          -1,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "audio",
+        "id": "yow-sound",
+        "sprite": true
+      },
+      {
+        "scale": [
+          0.5,
+          0.5,
+          0
+        ],
+        "uuid": "60508e30-d062-4a13-a33b-ba6d89eca554",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631203462216-5b92e0d8-c8b2-4d23-a122-e98343b05e43.mp3",
+        "volume": 0.49,
+        "version": "8.3.4",
+        "rolloffFactor": 1.2,
+        "position": [
+          -1,
+          -1,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "audio",
+        "id": "laughter-sound",
+        "sprite": true
+      },
+      {
+        "scale": [
+          0.5,
+          0.5,
+          0
+        ],
+        "uuid": "bcfe5318-c2dc-4e02-91cd-71ba1b3e4f39",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631205727033-b17de02e-ae5d-43cf-94e7-a2a1d60b08f9.mp3",
+        "volume": 0.32,
+        "version": "8.3.4",
+        "rolloffFactor": 1.2,
+        "position": [
+          1,
+          -1,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "audio",
+        "id": "fall-sound",
+        "sprite": true
+      },
+      {
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ],
+        "uuid": "de8852da-0480-4433-af96-8199f15993fb",
+        "color": "#6b4f00",
+        "text": "IN A GALAXY",
+        "edges": false,
+        "id": "polytext-2",
+        "version": "8.3.7",
+        "position": [
+          0,
+          3,
+          6
+        ],
+        "rotation": [
+          0,
+          1.57,
+          0
+        ],
+        "type": "polytext",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        }
+      },
+      {
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ],
+        "uuid": "4b28b300-f7ff-46ea-9ef5-e1d270f7f593",
+        "script": "feature.set({text:''});",
+        "color": "#6b4f00",
+        "text": "NOT SO FAR AWAY...",
+        "edges": false,
+        "id": "polytext-3",
+        "version": "8.3.7",
+        "position": [
+          0,
+          2,
+          6
+        ],
+        "rotation": [
+          0,
+          1.57,
+          0
+        ],
+        "type": "polytext",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        }
+      },
+      {
+        "scale": [
+          0.5,
+          0.5,
+          0
+        ],
+        "uuid": "bc1903ac-eba7-49dc-bde0-dd85fdf2ccab",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631185333232-7c8cf46d-02f1-4202-ab70-7308202a4a51.mp3",
+        "volume": 0.17,
+        "version": "8.3.7",
+        "rolloffFactor": 1.2,
+        "position": [
+          0,
+          -1,
+          -5
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "audio",
+        "id": "shotgun-sound",
+        "sprite": true
+      },
+      {
+        "scale": [
+          0.15,
+          0.15,
+          0.15
+        ],
+        "uuid": "e16ef20a-ff6e-467e-bb94-c09b415266b7",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631172719700-620e2cff-7561-4826-8f71-a20581738dfc.png",
+        "version": "8.3.7",
+        "position": [
+          0,
+          -1,
+          -5
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "cube",
+        "id": "bullet-template"
+      },
+      {
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ],
+        "uuid": "0fe92030-09ea-42e3-941e-c58f0420e4ec",
+        "script": "feature.set({text:''});",
+        "color": "#6b4f00",
+        "text": "ONCE UPON A TIME",
+        "edges": false,
+        "id": "polytext-1",
+        "version": "8.3.7",
+        "position": [
+          0,
+          4,
+          6
+        ],
+        "rotation": [
+          0,
+          1.57,
+          0
+        ],
+        "type": "polytext",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        }
+      },
+      {
+        "scale": [
+          26,
+          13,
+          0
+        ],
+        "uuid": "ea9a04c0-f296-4209-9db2-e52305e3ce6e",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1630933044735-c6026412-6424-45ea-a3bf-292f8b9f4a21.jpg",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17747",
+        "blendMode": "Combine",
+        "position": [
+          0.25,
+          1,
+          -6.25
+        ],
+        "rotation": [
+          -1.57,
+          0,
+          0
+        ],
+        "type": "image",
+        "id": "space-bottom-2"
+      },
+      {
+        "scale": [
+          26,
+          13,
+          0
+        ],
+        "uuid": "b24cfce8-977a-4b93-9216-d5497e75e7d3",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1630933044735-c6026412-6424-45ea-a3bf-292f8b9f4a21.jpg",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17330",
+        "blendMode": "Combine",
+        "position": [
+          0.25,
+          1,
+          6.25
+        ],
+        "rotation": [
+          -1.57,
+          0,
+          0
+        ],
+        "type": "image",
+        "id": "space-bottom-1"
+      },
+      {
+        "scale": [
+          0.71,
+          0.71,
+          0.71
+        ],
+        "uuid": "13cd65af-df99-4d9a-9d36-c68b4c1b1ce9",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 88,\n  r: 3,\n  rotation: 1408,\n  size: 2.4,\n  y: 1.6\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1643128337818-bccc7868-c052-41f3-b05e-ca6123ce8539.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "17330",
+        "position": [
+          3,
+          6.6,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "mercury"
+      },
+      {
+        "scale": [
+          1.03,
+          1.03,
+          1.03
+        ],
+        "uuid": "7da05eac-0978-4890-86cb-22b5fc8bb292",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 224.7,\n  r: 3.75,\n  rotation: 5833,\n  size: 6.1,\n  y: 1.55\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631052200546-a1960909-b081-4f09-81e8-329b61042986.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "17330",
+        "position": [
+          3.75,
+          6.55,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "venus"
+      },
+      {
+        "scale": [
+          1.05,
+          1.05,
+          1.05
+        ],
+        "uuid": "150a9b4d-8bf4-4558-88f0-95dfa547d383",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 365.2,\n  r: 4.5,\n  rotation: 24,\n  size: 6.4,\n  y: 1.55\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631052066999-7fc1bb59-7001-448b-81da-4a5b36f97fc4.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "17330",
+        "position": [
+          4.5,
+          6.55,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "earth"
+      },
+      {
+        "scale": [
+          0.6,
+          0.5,
+          0.7
+        ],
+        "uuid": "6f145337-5a98-4a81-a3b8-11e6dc8586c9",
+        "flipX": true,
+        "script": "const buttonLeft = parcel.getFeatureById('button-left');\nconst buttonRight = parcel.getFeatureById('button-right');\nconst ufo = parcel.getFeatureById('ufo');\n\nfeature.rotation.y = Math.PI / 2;\n\nfeature.on('click', e => {\n  shoot();\n});\n\nfeature.hide = function() {\n  feature.position.y = -5;\n  buttonLeft.hide();\n  buttonRight.hide();\n}\n\nfeature.show = function() {\n   feature.position.y = 1.5;\n   buttonLeft.show();\n   buttonRight.show();\n}\n\nfunction shoot() {\n  feature.createVoxBurst(2);\n}\n\n// store\nlet itemUuids = [];\n\nlet burstInProgress = false;\nfeature.createVoxBurst = function(n) {\n  if (burstInProgress) return;\n  burstInProgress = true;\n  let count = 0;\n  let sound = parcel.getFeatureById('shotgun-sound');\n  sound.play();\n  let burstInterval = setInterval(() => {\n    let vox = cloneVox(count);\n    console.log(vox.uuid);\n    itemUuids.push(vox.uuid);\n    count++;\n    if (count >= n) {\n      clearInterval(burstInterval);\n      setTimeout(() => {\n        feature.removeVoxBurst();\n        ufo.shoot(currentPosition);\n      }, 500);      \n    }\n  }, 50);\n  setTimeout(() => {\n    burstInProgress = false;      \n  }, 1000);\n\n}\n\nfeature.removeVoxBurst = function() {\n  let uuid = null;\n  while (uuid = itemUuids.pop()) {\n    let f = parcel.getFeatureByUuid(uuid);\n    if (f) {\n      console.log(uuid);\n      f.remove();\n    }\n  }\n}\n\nfeature.removeAllCubes = function(n) {\n  let allCubes = parcel.getFeaturesByType('cube');\n  while (cube = allCubes.pop()) {\n    if (cube) {\n      console.log(cube);\n      cube.remove();\n    }\n  }\n}\n\n\nfunction createVox(position) {\n  let vox = parcel.createFeature('vox-model');\n  vox.set({\n      url: 'https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631169704473-f58667a2-7fc4-42f6-a4cc-42f4ab8ea202.vox',\n      position: [position - 1, 1, 2],\n      scale: [1, 1, 1]\n  });\n  return vox;\n}\n\nfunction cloneVox() {\n  let template = parcel.getFeatureById('bullet-template');\n  let vox = template.clone();\n  const posX = 0 + currentPosition * 0.2;\n  vox.set({\n      position: [posX, 2, -1]\n  });\n  let moveAnimation = vox.createAnimation('position');\n  const pX = getRandom(0, 0.5) - 0.25 + currentPosition * 0.6;\n  const pY = getRandom(0, 1);\n  moveAnimation.setKeys([{\n    frame: 15,\n    value: vox.position.add(new Vector3(pX, pY, 3))\n  }]);  \n  let rotateAnimation = vox.createAnimation('rotation');\n  const rX = getRandom(1, 3) * Math.PI;\n  const rY = getRandom(1, 3) * Math.PI;\n  const rZ = getRandom(1, 3) * Math.PI;\n  rotateAnimation.setKeys([{\n    frame: 15,\n    value: vox.rotation.add(new Vector3(rX, rY, rZ))\n  }]);\n  vox.startAnimations([moveAnimation, rotateAnimation]);\n  return vox;\n}\n\nlet currentPosition = 0;\nlet rotating = false;\nfeature.rotate = function(positionDelta) {\n  if (rotating) return;\n  let newPosition = currentPosition + positionDelta;\n  if (newPosition < -2 || newPosition > 2) return;\n  rotating = true;\n  currentPosition = newPosition;\n  let rotateAnimation = feature.createAnimation('rotation');\n  const rY = positionDelta * (Math.PI / 16);\n  rotateAnimation.setKeys([{\n    frame: 15,\n    value: feature.rotation.add(new Vector3(0, rY, 0))\n  }]);\n  feature.startAnimations([rotateAnimation]);\n  setTimeout(() => {\n    feature.rotation.y += rY;\n    rotating = false;\n  }, 500);\n}\n\nfunction getRandom(start, interval) {\n  return start + interval * Math.random();\n}",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631613642755-98d1cc76-0885-47c2-b535-f8c6fb5bb560.vox",
+        "id": "shotgun",
+        "collidable": true,
+        "version": "8.4.0",
+        "position": [
+          0,
+          -5,
+          -2
+        ],
+        "rotation": [
+          0,
+          1.5707963267948966,
+          0
+        ],
+        "type": "megavox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        }
+      },
+      {
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "uuid": "8f010781-e1ce-4041-8c21-3ea875d8df5b",
+        "script": "feature.hide = function() {\n  feature.position.y = -5;\n}\n\nfeature.show = function() {\n   feature.position.y = 1;\n}\n\nfeature.on('click', ()=>{\n let sun = parcel.getFeatureById('sun');\n sun.nextSection();\n})",
+        "color": "white",
+        "text": "A",
+        "soundId": "8",
+        "version": "8.3.9",
+        "position": [
+          0,
+          -5,
+          2
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "button",
+        "id": "button-shotgun"
+      },
+      {
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "uuid": "8c8faf6e-687e-41b0-b69e-1c9ce56a35d8",
+        "script": "feature.hide = function() {\n   feature.position.y = -5;\n}\n\nfeature.show = function() {\n    feature.position.y = 1;\n}\n\nfeature.on('click', ()=>{\n  let sun = parcel.getFeatureById('sun');\n  sun.toggleSystem();\n})",
+        "text": "A",
+        "soundId": "8",
+        "version": "8.3.9",
+        "position": [
+          0,
+          -5,
+          2
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "button",
+        "id": "button-start"
+      },
+      {
+        "scale": [
+          0.82,
+          0.82,
+          0.82
+        ],
+        "uuid": "9dd793f8-0dae-4633-8cfc-92e16d380ffa",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 687,\n  r: 5.25,\n  rotation: 25,\n  size: 3.4,\n  y: 1.6\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631051959666-cc032a33-d497-4e29-b6b6-838092b5c59e.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "17330",
+        "position": [
+          5.25,
+          6.6,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "mars"
+      },
+      {
+        "scale": [
+          2.5,
+          3,
+          0
+        ],
+        "uuid": "3124cbb4-ec18-4421-8dfd-4074dbbfaeca",
+        "script": "feature.hide = function() {\n   feature.position.y = -2;\n}\n\nfeature.show = function() {\n    const moveAnimation = feature.createAnimation('position');\n    moveAnimation.setKeys([{\n      frame: 150,\n      value: feature.position.add(new Vector3(0, 4.7, 0))\n    }]);\n    feature.startAnimations([moveAnimation]);\n}\n",
+        "text": "# Attributions\n\nConcept, scripting and basic modeling by Zero Pointer. Other models used are listed below. Big thanks to all the wonderful people creating 3D models for free use!\n\n## Sun, planet and stars textures\n\nSolar System Scope\n\nhttps://www.solarsystemscope.com/textures/\n\n## UFO model\n\ntab1bit0\n\nhttps://sketchfab.com/3d-models/ufo-8288a85fdf9d48f6a9a9ec6df27d5aa0\n\n## UFO bomb model\n\nBalrogchar\n\nhttps://sketchfab.com/3d-models/bullet-bill-05bf02df3c6247f1a3276a16eaf52bf7\n\n## Blaster model\n\nZack_Taylor\n\nhttps://sketchfab.com/3d-models/blaster-f4a73c80f5f846b1ba91de93d9f226ce\n\n## Background music\n\nAsthenic - ＳＰＡＣＥ　ＴＲＩＰ [ Chillwave - Synthwave - Retrowave Mix ]\nhttps://www.youtube.com/watch?v=wOMwO5T3yT4",
+        "inverted": true,
+        "version": "8.4.0",
+        "blendMode": "Screen",
+        "position": [
+          4,
+          -2,
+          4.95
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "richtext",
+        "id": "attributions"
+      },
+      {
+        "scale": [
+          2,
+          1.5,
+          1.5
+        ],
+        "uuid": "89b44e6b-5aff-4d14-bab6-8665fdd62c77",
+        "flipX": true,
+        "script": "const sun = parcel.getFeatureById('sun');\n\n// Blinking\nlet flip = true;\nfeature.set({color: '#FFFFFF'});\nsetInterval(() => {\n  if (flip) {\n    feature.set({color: '#D11F0D'});\n  } else {\n    feature.set({color: '#FFFFFF'});\n  }\n  flip = !flip;\n}, 700);\n\nfeature.hide = function() {\n   feature.position.y = -5;\n}\n\nfeature.show = function() {\n    feature.position.y = 3.2;\n}\n\nfeature.on('click', () => {\n  sun.nextSection();\n});",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631284830484-e5691bee-6d41-4ee2-9213-a5dc4a01f049.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "color": "#FFFFFF",
+        "version": "8.3.11",
+        "collidable": true,
+        "position": [
+          5,
+          3.2,
+          6
+        ],
+        "rotation": [
+          1.57,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "button-next"
+      },
+      {
+        "opacity": "1.00",
+        "scale": [
+          1,
+          1,
+          0
+        ],
+        "uuid": "b9463264-179b-4990-9071-100841f2ad0f",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631207062315-0550c1b4-32f7-4701-9e40-fc7febd4b1d6.gif",
+        "updateDaily": false,
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "transparent": "Background",
+        "stretch": false,
+        "version": "8.3.4",
+        "uScale": 1,
+        "position": [
+          -1,
+          -5,
+          2.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "image",
+        "id": "boom-shotgun",
+        "vScale": 1,
+        "blendMode": "Combine"
+      },
+      {
+        "scale": [
+          2,
+          1,
+          1
+        ],
+        "uuid": "85eb5be5-ee38-455c-a3f2-7b95beb28ad3",
+        "flipX": true,
+        "script": "feature.hide = function() {\n   feature.position.y = -5;\n}\n\nfeature.show = function() {\n    feature.position.y = 1.75;\n}\n\nfeature.on('click', ()=>{\n  const shotgun = parcel.getFeatureById('shotgun');\n  shotgun.rotate(1);\n})",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631290903612-95f372e9-440f-4328-a76a-69e398ec993b.vox",
+        "version": "8.3.7",
+        "position": [
+          1,
+          -5,
+          -2.5
+        ],
+        "rotation": [
+          1.57,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "button-right"
+      },
+      {
+        "scale": [
+          2,
+          1,
+          1
+        ],
+        "uuid": "55ca0b2b-6346-4a40-82f6-9c3b084395ca",
+        "flipX": true,
+        "script": "feature.hide = function() {\n   feature.position.y = -5;\n}\n\nfeature.show = function() {\n    feature.position.y = 1.75;\n}\n\nfeature.on('click', ()=>{\n  const shotgun = parcel.getFeatureById('shotgun');\n  shotgun.rotate(-1);\n})",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631290903612-95f372e9-440f-4328-a76a-69e398ec993b.vox",
+        "version": "8.3.7",
+        "position": [
+          -1,
+          -5,
+          -2.5
+        ],
+        "rotation": [
+          1.57,
+          3.14,
+          0
+        ],
+        "type": "vox-model",
+        "id": "button-left"
+      },
+      {
+        "scale": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "uuid": "9e5bff07-d409-4dda-b18c-ec39cc8162d8",
+        "flipX": true,
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631528035021-223b58ca-380b-499c-a549-ac7c8ddf6256.vox",
+        "version": "8.3.11",
+        "position": [
+          -1,
+          -5,
+          3
+        ],
+        "rotation": [
+          -1.57,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "ufo-bomb"
+      },
+      {
+        "opacity": "0.84",
+        "scale": [
+          1,
+          1,
+          0
+        ],
+        "uuid": "8c596525-e1b6-4fce-9fef-62f42ba11816",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631207146294-761006c3-8859-4377-b26a-659834798236.gif",
+        "updateDaily": false,
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "transparent": "Background",
+        "stretch": false,
+        "version": "8.3.11",
+        "blendMode": "Combine",
+        "position": [
+          -0.1,
+          -5,
+          3.5
+        ],
+        "rotation": [
+          -1.48,
+          0,
+          0
+        ],
+        "uScale": 1,
+        "type": "image",
+        "id": "boom-bomb",
+        "vScale": 1
+      },
+      {
+        "scale": [
+          2.73,
+          2.73,
+          2.73
+        ],
+        "uuid": "77efda1b-630e-4f90-b190-9da729ae0267",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 4331,\n  r: 6.5,\n  rotation: 10,\n  size: 69.9,\n  y: 1.2\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631050288741-7706f71a-e3f2-40cf-9183-5ea205bc17a1.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "17330",
+        "position": [
+          6.5,
+          6.2,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "jupiter"
+      },
+      {
+        "scale": [
+          2.54,
+          2.54,
+          2.54
+        ],
+        "uuid": "1a01fdff-0b79-449e-a2d4-75691e9df9a8",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 10747,\n  r: 8.5,\n  rotation: 11,\n  size: 58.2,\n  y: 1.2\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631363687304-d90a0a77-4335-46a4-b97f-beef4b12ca05.vox",
+        "id": "saturn",
+        "collidable": true,
+        "version": "17330",
+        "position": [
+          8.5,
+          6.2,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        }
+      },
+      {
+        "scale": [
+          2.46,
+          2.46,
+          2.46
+        ],
+        "uuid": "1d489d3e-524b-4cd9-bf7d-cfe1f6295797",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 10747,\n  r: 8.5,\n  rotation: 11,\n  size: 53.46,\n  y: 1.75\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631364639814-23b23ac0-2dab-46eb-9c33-510f6bd8e61b.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17330",
+        "position": [
+          8.5,
+          6.75,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "megavox",
+        "id": "saturn-ring"
+      },
+      {
+        "scale": [
+          1.82,
+          1.82,
+          1.82
+        ],
+        "uuid": "fe874f76-77e4-4f88-bd9b-a8c7f7deb461",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 30589,\n  r: 10.25,\n  rotation: 17,\n  size: 25.4,\n  y: 1.3\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631050836496-7640745c-aab9-4223-9225-a06e188cf524.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "17330",
+        "position": [
+          10.25,
+          6.3,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "uranus"
+      },
+      {
+        "scale": [
+          26,
+          13,
+          0
+        ],
+        "uuid": "3d003b9c-a19e-42db-b8f8-90c88116caa6",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1630933044735-c6026412-6424-45ea-a3bf-292f8b9f4a21.jpg",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17747",
+        "blendMode": "Combine",
+        "position": [
+          0.25,
+          13,
+          -6.25
+        ],
+        "rotation": [
+          1.57,
+          0,
+          0
+        ],
+        "type": "image",
+        "id": "space-top-2"
+      },
+      {
+        "scale": [
+          26,
+          13,
+          0
+        ],
+        "uuid": "e603dea2-6018-4681-ac22-0a95f5e76bad",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1630933044735-c6026412-6424-45ea-a3bf-292f8b9f4a21.jpg",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17747",
+        "blendMode": "Combine",
+        "position": [
+          0.25,
+          13,
+          6.25
+        ],
+        "rotation": [
+          1.57,
+          0,
+          0
+        ],
+        "type": "image",
+        "id": "space-top-1"
+      },
+      {
+        "scale": [
+          26,
+          13,
+          0
+        ],
+        "uuid": "3764f5fe-09ff-42cb-877c-13d22230ac45",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1630933044735-c6026412-6424-45ea-a3bf-292f8b9f4a21.jpg",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17747",
+        "blendMode": "Combine",
+        "position": [
+          -11.75,
+          6.75,
+          0.25
+        ],
+        "rotation": [
+          0,
+          1.57,
+          0
+        ],
+        "type": "image",
+        "id": "space-left"
+      },
+      {
+        "scale": [
+          1.8,
+          1.8,
+          1.8
+        ],
+        "uuid": "9657972e-6ed4-4b56-b727-7c8dcb51d4f2",
+        "flipX": true,
+        "script": "feature.definition = {\n  period: 59800,\n  r: 11.5,\n  rotation: 24,\n  size: 24.6,\n  y: 1.3\n}\nfeature.state = {}\nconst sun = parcel.getFeatureById('sun');\nsun.initPlanet(feature);\n",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1631050870766-7d01201c-1ca4-444e-b3ac-6d52040ec64d.vox",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "collidable": true,
+        "version": "17330",
+        "position": [
+          11.5,
+          6.3,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "vox-model",
+        "id": "neptune"
+      },
+      {
+        "scale": [
+          26,
+          13,
+          0
+        ],
+        "uuid": "02c69925-eede-400c-aea6-47ebd1d28938",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1630933044735-c6026412-6424-45ea-a3bf-292f8b9f4a21.jpg",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17330",
+        "blendMode": "Combine",
+        "position": [
+          12.25,
+          6.75,
+          0.25
+        ],
+        "rotation": [
+          0,
+          1.57,
+          0
+        ],
+        "type": "image",
+        "id": "space-right"
+      },
+      {
+        "scale": [
+          26,
+          13,
+          0
+        ],
+        "uuid": "9df42212-f04b-449f-953d-44b64b9d7115",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1630933044735-c6026412-6424-45ea-a3bf-292f8b9f4a21.jpg",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17747",
+        "blendMode": "Combine",
+        "position": [
+          0.25,
+          6.75,
+          -12.25
+        ],
+        "rotation": [
+          0,
+          3.14159,
+          0
+        ],
+        "type": "image",
+        "id": "space-right"
+      },
+      {
+        "scale": [
+          26,
+          13,
+          0
+        ],
+        "uuid": "b89e7bf4-aeb7-4ff0-8202-801d5a4254ac",
+        "url": "https://media-crvox.sfo2.digitaloceanspaces.com/0x517dcd3ed115f0139fb2d89dffd0593641722390/1630929212899-d4bc50db-8a0c-456c-929c-48970caf28de.jpg",
+        "animation": {
+          "destination": null,
+          "keyframes": []
+        },
+        "version": "17330",
+        "blendMode": "Combine",
+        "position": [
+          0.25,
+          6.75,
+          12.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "image",
+        "id": "space-front"
+      },
+      {
+        "scale": [
+          2,
+          1,
+          0
+        ],
+        "uuid": "dbd9095a-150c-4414-99dc-a7586d2890fe",
+        "url": "https://www.youtube.com/watch?v=wOMwO5T3yT4",
+        "inverted": false,
+        "volume": 0.05,
+        "version": "8.3.11",
+        "rolloffFactor": 0,
+        "position": [
+          0,
+          -5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "type": "youtube",
+        "id": "background-music",
+        "screenRatio": "169",
+        "autoplay": true
+      }
+    ],
+    "settings": {}
+  },
+  "width": 24,
+  "depth": 24,
+  "owner": "0x517dcd3ed115f0139fb2d89dffd0593641722390",
+  "id": "5f439817-8122-4dbf-8330-913e84600d74",
+  "description": null
+}
